@@ -1025,7 +1025,9 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
 
     if "UNSAFE" in url_verdicts or final_score >= 75:
         overall_verdict = "UNSAFE"
-    elif "SUSPICIOUS" in url_verdicts or final_score >= 40 or flags:
+    elif "SUSPICIOUS" in url_verdicts or flags:
+        overall_verdict = "SUSPICIOUS"
+    elif final_score >= 50:
         overall_verdict = "SUSPICIOUS"
     elif final_score < 15 and all(v == "NO_KNOWN_THREAT_FOUND" for v in url_verdicts) and not flags:
         overall_verdict = "NO_KNOWN_THREAT_FOUND"
