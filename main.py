@@ -925,8 +925,13 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
         flags.append(f"Return-Path differs from effective sender: {rp_email} vs {effective_from_email}")
 
     body_contact_emails = extract_body_contact_emails(plain_body)
+
     for body_email in body_contact_emails:
-        if effective_from_email and body_email != effective_from_email:
+        if (
+            effective_from_email
+            and body_email != effective_from_email
+            and sender_source != "forwarded_original_sender"
+        ):
             flags.append(f"Different contact email found in body: {body_email}")
             break
 
