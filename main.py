@@ -972,20 +972,26 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
 
     gemini_result = {"enabled": False, "error": "Not run"}
 
-    gemini_result = analyze_with_gemini({
-        "subject": subject,
-        "effective_from": effective_from,
-        "effective_from_email": effective_from_email,
-        "effective_from_domain": effective_from_domain,
-        "sender_source": sender_source,
-        "plain_body": plain_body,
-        "urls_found": unique_urls,
-        "url_reports": url_reports,
-        "flags": flags,
-        "ml_score": ml_score,
-        "heuristic_score": heuristic_score,
-        "infrastructure_score": infrastructure_score,
-    })
+    try:
+        gemini_result = analyze_with_gemini({
+            "subject": subject,
+            "effective_from": effective_from,
+            "effective_from_email": effective_from_email,
+            "effective_from_domain": effective_from_domain,
+            "sender_source": sender_source,
+            "plain_body": plain_body,
+            "urls_found": unique_urls,
+            "url_reports": url_reports,
+            "flags": flags,
+            "ml_score": ml_score,
+            "heuristic_score": heuristic_score,
+            "infrastructure_score": infrastructure_score,
+        })
+    except Exception as exc:
+        gemini_result = {
+            "enabled": False,
+            "error": f"Gemini analysis failed: {exc}"
+        }
 
     final_score = preliminary_score
     gemini_score = None
