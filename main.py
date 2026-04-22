@@ -799,6 +799,7 @@ Important rules:
 - Use content, URLs, sender domain, and extracted signals.
 - Do not assume transport authentication means the message is legitimate.
 - If no clear brand is present, brand_name should be null and brand_legitimate should be null.
+- Do not treat third-party sending domains, tracking links, or service-provider subdomains as suspicious by themselves if URL resolution, Safe Browsing, and typosquatting checks do not indicate a threat.
 
 Allowed scam_type values:
 ["PHISHING", "ADVANCE_FEE_SCAM", "DELIVERY_SCAM", "FINANCIAL_FRAUD", "JOB_SCAM", "MALWARE", "SPAM", "LEGITIMATE", "UNKNOWN"]
@@ -1001,13 +1002,23 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
     gemini_score = None
 
     if gemini_result.get("enabled") and isinstance(gemini_result.get("scam_probability"), int):
-        gemini_score = max(0, min(100, gemini_result["scam_probability"]))
+        gemini_score = max(0, min(80, gemini_result["scam_probability"]))
+
+        if infrastructure_score > 0 or flags:
+            gemini_weight = 0.15
+        else:
+            gemini_weight = 0.10
+
         final_score = int(round(
-            (0.50 * ml_score) +
+            (0.55 * ml_score) +
             (0.15 * infrastructure_score) +
             (0.20 * (heuristic_score / 30 * 100)) +
-            (0.15 * gemini_score)
+            (gemini_weight * gemini_score)
         ))
+
+        if sender_source == "forwarded_original_sender":
+            final_score = int(final_score * 0.90)
+
         final_score = min(100, max(0, final_score))
 
     url_verdicts = [r.get("final_verdict", "UNKNOWN") for r in url_reports]
