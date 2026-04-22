@@ -924,8 +924,7 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
     if rp_email and effective_from_email and rp_email != effective_from_email:
         flags.append(f"Return-Path differs from effective sender: {rp_email} vs {effective_from_email}")
 
-    body_contact_emails = extract_body_contact_emails(plain_body)
-
+   body_contact_emails = extract_body_contact_emails(plain_body)
     for body_email in body_contact_emails:
         if (
             effective_from_email
