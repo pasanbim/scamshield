@@ -699,9 +699,9 @@ def calculate_infrastructure_score(flags: list[str], url_reports: list[dict[str,
 def risk_label(score: int) -> str:
     if score >= 75:
         return "HIGH RISK"
-    if score >= 40:
+    if score >= 50:
         return "MEDIUM RISK"
-    if score >= 15:
+    if score >= 25:
         return "LOW RISK"
     return "LIKELY SAFE"
 
