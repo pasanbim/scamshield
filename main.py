@@ -1003,10 +1003,10 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
     if gemini_result.get("enabled") and isinstance(gemini_result.get("scam_probability"), int):
         gemini_score = max(0, min(100, gemini_result["scam_probability"]))
         final_score = int(round(
-            (0.45 * ml_score) +
+            (0.50 * ml_score) +
             (0.15 * infrastructure_score) +
-            (0.15 * (heuristic_score / 30 * 100)) +
-            (0.25 * gemini_score)
+            (0.20 * (heuristic_score / 30 * 100)) +
+            (0.15 * gemini_score)
         ))
         final_score = min(100, max(0, final_score))
 
