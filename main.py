@@ -37,8 +37,8 @@ CSV_PATH = "phishing_email.csv"
 MODEL_PATH = "scamshield_model.pkl"
 TEXT_COL = "text_combined"
 LABEL_COL = "label"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyC5f2gNZqN86Xgze8HJ9cSAMslnrH_KiPM")
-GOOGLE_API_KEY = os.getenv("GOOGLE_SAFE_BROWSING_API_KEY", "AIzaSyAPLsd38qTwmeSaAafboe60_m9v66m4l7g")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_SAFE_BROWSING_API_KEY")
 
 
 SAFE_BROWSING_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
