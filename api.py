@@ -68,8 +68,9 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     <style>
       body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 20px; color: #1f2937; margin: 0; }}
       .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
-      .header {{ background-color: {color_theme}; color: #ffffff; padding: 24px; text-align: center; }}
-      .header h1 {{ margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }}
+      .header {{ background-color: #ffffff; border-top: 6px solid {color_theme}; padding: 32px 24px 0 24px; text-align: center; }}
+      .header img {{ max-width: 220px; height: auto; margin-bottom: 16px; }}
+      .header h1 {{ margin: 0; font-size: 24px; font-weight: 600; color: #1f2937; letter-spacing: 0.5px; }}
       .content {{ padding: 32px 24px; }}
       .greeting {{ font-size: 16px; margin-bottom: 24px; color: #4b5563; }}
       .verdict-box {{ background-color: {bg_theme}; border-left: 4px solid {color_theme}; padding: 16px; margin-bottom: 24px; border-radius: 4px; }}
@@ -87,7 +88,8 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     <body>
       <div class="container">
         <div class="header">
-          <h1>ScamShield Analysis Report</h1>
+          <img src="https://res.cloudinary.com/dcwxpqtd1/image/upload/v1776936877/scamshield_n9uvma.png" alt="ScamShield Logo">
+          <h1>Analysis Report</h1>
         </div>
         <div class="content">
           <p class="greeting">Hello,</p>
