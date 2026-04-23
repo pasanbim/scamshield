@@ -165,6 +165,62 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {e}")
 
+def send_quota_exceeded_email(to_email: str, daily_limit: int):
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "ScamShield Analysis: Daily Quota Exceeded"
+    msg["From"] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
+    msg["To"] = to_email
+
+    text = f"Hello,\n\nYou have reached your daily limit of {daily_limit} scans. Please wait until tomorrow or upgrade your plan to scan more emails.\n\nThanks,\nScamShield Automated Scanner"
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+      body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 20px; color: #1f2937; margin: 0; }}
+      .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
+      .header {{ background-color: #ffffff;padding: 32px 24px 0 24px; text-align: center; }}
+      .header img {{ max-width: 220px; height: auto; margin-bottom: 16px; }}
+      .content {{ padding: 32px 24px; text-align: center; }}
+      .greeting {{ font-size: 16px; margin-bottom: 24px; color: #4b5563; }}
+      .footer {{ background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; }}
+    </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="https://res.cloudinary.com/dcwxpqtd1/image/upload/v1776936877/scamshield_n9uvma.png" alt="ScamShield Logo">
+        </div>
+        <div class="content">
+          <h2 style="color: #dc2626; margin-top: 0;">Scan Limit Reached</h2>
+          <p class="greeting">Hello,</p>
+          <p class="greeting">You have reached your daily limit of <strong>{daily_limit} scans</strong>.</p>
+          <p class="greeting" style="margin-bottom: 8px;">Please wait until tomorrow to scan more emails, or log in to your account and upgrade your subscription plan to lift the limits.</p>
+        </div>
+        <div class="footer">
+          &copy; ScamShield Automated Scanner
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    part1 = MIMEText(text, "plain")
+    part2 = MIMEText(html, "html")
+    msg.attach(part1)
+    msg.attach(part2)
+
+    try:
+        server = smtplib.SMTP(MAIL_HOST, MAIL_PORT)
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
+        server.quit()
+        logger.info(f"Quota exceeded email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send quota email to {to_email}: {e}")
+
 app = FastAPI(title="ScamShield API", version="1.0.0")
 
 # ML model loaded once at startup
@@ -244,6 +300,7 @@ async def analyze(request: Request, x_api_key: str = Header(default=None)):
 
                 if submission_count >= daily_limit:
                     logger.info(f"Rate limit HIT. User {top_from_email} has {submission_count}/{daily_limit} submissions today.")
+                    send_quota_exceeded_email(top_from_email, daily_limit)
                     return JSONResponse(content={"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"})
     except Exception as e:
         logger.exception("Database configuration or limits query failed")
