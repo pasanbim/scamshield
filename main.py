@@ -1279,8 +1279,10 @@ async def analyze_endpoint(request: Request):
     report = analyze_email_raw(raw_email, api_model)
 
     effective_from_email = report.get("effective_from_email")
-    if not effective_from_email:
-        return {"status": "skipped", "reason": "No effective_from_email extracted", "report": report}
+    top_from_email = report.get("top_from_email")
+    
+    if not top_from_email:
+        return {"status": "skipped", "reason": "No top_from_email extracted", "report": report}
 
     # Query Database
     try:
@@ -1289,12 +1291,12 @@ async def analyze_endpoint(request: Request):
                 # Check user exists
                 cur.execute(
                     "SELECT id FROM users WHERE lower(email) = lower(%s)",
-                    (effective_from_email,)
+                    (top_from_email,)
                 )
                 user = cur.fetchone()
 
                 if not user:
-                    return {"status": "skipped", "reason": f"User {effective_from_email} not found"}
+                    return {"status": "skipped", "reason": f"User {top_from_email} not found"}
 
                 user_id = user["id"]
                 message_id = report.get("message_id")
