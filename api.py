@@ -68,7 +68,7 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     <style>
       body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 20px; color: #1f2937; margin: 0; }}
       .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
-      .header {{ background-color: #ffffff; border-top: 6px solid {color_theme}; padding: 32px 24px 0 24px; text-align: center; }}
+      .header {{ background-color: #ffffff;padding: 32px 24px 0 24px; text-align: center; }}
       .header img {{ max-width: 220px; height: auto; margin-bottom: 16px; }}
       .header h1 {{ margin: 0; font-size: 24px; font-weight: 600; color: #1f2937; letter-spacing: 0.5px; }}
       .content {{ padding: 32px 24px; }}
@@ -89,7 +89,6 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
       <div class="container">
         <div class="header">
           <img src="https://res.cloudinary.com/dcwxpqtd1/image/upload/v1776936877/scamshield_n9uvma.png" alt="ScamShield Logo">
-          <h1>Analysis Report</h1>
         </div>
         <div class="content">
           <p class="greeting">Hello,</p>
