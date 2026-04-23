@@ -30,8 +30,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def send_report_email(to_email: str, subject_of_original: str, report: dict):
+    # Safely strip "Fwd: " from subject without regex
+    clean_subject = subject_of_original.strip()
+    if clean_subject.lower().startswith("fwd: "):
+        clean_subject = clean_subject[5:].strip()
+    elif clean_subject.lower().startswith("fwd:"):
+        clean_subject = clean_subject[4:].strip()
+
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"ScamShield Analysis Report: {subject_of_original}"
+    msg["Subject"] = f"ScamShield Analysis Report: {clean_subject}"
     msg["From"] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
     msg["To"] = to_email
 
@@ -39,14 +46,88 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     risk = report.get('risk_label', 'UNKNOWN')
     probability = report.get('scam_probability', 0)
     
-    text = f"ScamShield Analysis Report\n\nWe have analyzed the email you forwarded.\n\nOriginal Subject: {subject_of_original}\nOverall Verdict: {verdict}\nRisk Label: {risk}\nScam Probability: {probability}%\n\nReasons identifying this verdict:\n"
+    # Determine colors based on risk
+    if verdict == "UNSAFE":
+        color_theme = "#dc2626" # Red
+        bg_theme = "#fef2f2"
+    elif verdict == "SUSPICIOUS":
+        color_theme = "#d97706" # Orange
+        bg_theme = "#fffbeb"
+    else:
+        color_theme = "#16a34a" # Green
+        bg_theme = "#f0fdf4"
+
+    text = f"ScamShield Analysis Report\n\nWe have analyzed the email you forwarded.\n\nOriginal Subject: {clean_subject}\nOverall Verdict: {verdict}\nRisk Label: {risk}\nScam Probability: {probability}%\n\nReasons identifying this verdict:\n"
     for r in report.get("reasons", []):
         text += f"- {r}\n"
 
-    html = f"<html><body><h2>ScamShield Analysis Report</h2><p>We have analyzed the email you forwarded.</p><ul><li><strong>Original Subject:</strong> {subject_of_original}</li><li><strong>Overall Verdict:</strong> {verdict}</li><li><strong>Risk Label:</strong> {risk}</li><li><strong>Scam Probability:</strong> {probability}%</li></ul><h3>Reasons:</h3><ul>"
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+      body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 20px; color: #1f2937; margin: 0; }}
+      .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
+      .header {{ background-color: {color_theme}; color: #ffffff; padding: 24px; text-align: center; }}
+      .header h1 {{ margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }}
+      .content {{ padding: 32px 24px; }}
+      .greeting {{ font-size: 16px; margin-bottom: 24px; color: #4b5563; }}
+      .verdict-box {{ background-color: {bg_theme}; border-left: 4px solid {color_theme}; padding: 16px; margin-bottom: 24px; border-radius: 4px; }}
+      .verdict-title {{ font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin: 0 0 4px 0; font-weight: 600; }}
+      .verdict-value {{ font-size: 20px; font-weight: 700; color: {color_theme}; margin: 0; }}
+      .details-table {{ width: 100%; border-collapse: collapse; margin-bottom: 24px; }}
+      .details-table th {{ text-align: left; padding: 12px 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; width: 40%; }}
+      .details-table td {{ padding: 12px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 500; }}
+      .reasons-title {{ font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }}
+      .reasons-list {{ margin: 0; padding-left: 20px; color: #4b5563; }}
+      .reasons-list li {{ margin-bottom: 8px; line-height: 1.5; }}
+      .footer {{ background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; }}
+    </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>ScamShield Analysis Report</h1>
+        </div>
+        <div class="content">
+          <p class="greeting">Hello,</p>
+          <p class="greeting">We have completed the security analysis of the email you recently forwarded across to us.</p>
+          
+          <div class="verdict-box">
+            <p class="verdict-title">Overall Verdict</p>
+            <p class="verdict-value">{verdict}</p>
+          </div>
+
+          <table class="details-table">
+            <tr>
+              <th>Original Subject</th>
+              <td>{clean_subject}</td>
+            </tr>
+            <tr>
+              <th>Risk Label</th>
+              <td>{risk}</td>
+            </tr>
+            <tr>
+              <th>Scam Probability</th>
+              <td>{probability}%</td>
+            </tr>
+          </table>
+
+          <h3 class="reasons-title">Detailed Findings</h3>
+          <ul class="reasons-list">
+    """
     for r in report.get("reasons", []):
         html += f"<li>{r}</li>"
-    html += "</ul></body></html>"
+    html += """
+          </ul>
+        </div>
+        <div class="footer">
+          &copy; ScamShield Automated Scanner
+        </div>
+      </div>
+    </body>
+    </html>
+    """
 
     part1 = MIMEText(text, "plain")
     part2 = MIMEText(html, "html")
