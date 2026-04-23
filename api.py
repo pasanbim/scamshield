@@ -205,34 +205,66 @@ async def analyze(request: Request, x_api_key: str = Header(default=None)):
     if not raw_email.strip():
         raise HTTPException(status_code=400, detail="Email content is empty")
 
+    import email as email_lib
+    from email.policy import default
+    import re
+
+    # 1. Quick parsing to extract 'From' email early
+    msg_obj = email_lib.message_from_string(raw_email, policy=default)
+    top_from_header = msg_obj.get("From", "")
+    top_from_match = re.search(r"<([^>]+)>", top_from_header)
+    top_from_email = top_from_match.group(1).strip() if top_from_match else top_from_header.strip()
+    top_from_email = top_from_email.lower().strip()
+
+    if not top_from_email:
+        return JSONResponse(content={"status": "skipped", "reason": "No top_from_email extracted from headers"})
+
+    # 2. Verify user and enforce daily limits BEFORE heavy ML processing
+    user_id = None
+    try:
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, plan_name, daily_scan_limit FROM users WHERE lower(email) = lower(%s)",
+                    (top_from_email,)
+                )
+                user = cur.fetchone()
+
+                if not user:
+                    return JSONResponse(content={"status": "skipped", "reason": f"User {top_from_email} not found"})
+
+                user_id = user["id"]
+                daily_limit = user["daily_scan_limit"] if user["daily_scan_limit"] is not None else 10
+
+                cur.execute(
+                    "SELECT COUNT(*) as count FROM email_submissions WHERE user_id = %s AND DATE(created_at) = CURRENT_DATE",
+                    (user_id,)
+                )
+                submission_count = cur.fetchone()["count"]
+
+                if submission_count >= daily_limit:
+                    logger.info(f"Rate limit HIT. User {top_from_email} has {submission_count}/{daily_limit} submissions today.")
+                    return JSONResponse(content={"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"})
+    except Exception as e:
+        logger.exception("Database configuration or limits query failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # 3. Process the heavy ML scan now that limit checks passed
     try:
         report = analyze_email_raw(raw_email, _model)
     except Exception as exc:
         logger.exception("Analysis failed")
         raise HTTPException(status_code=500, detail=str(exc))
 
-    top_from_email = report.get("top_from_email")
-    if not top_from_email:
-        return JSONResponse(content={"status": "skipped", "reason": "No top_from_email extracted", "report": report})
+    # Extract or generate message_id early
+    message_id = report.get("message_id")
+    if not message_id:
+        message_id = str(uuid.uuid4())
 
-    # Query Database
+    # 4. Save to Database
     try:
         with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                # Check user exists (the user forwarding the email is top_from_email)
-                cur.execute(
-                    "SELECT id FROM users WHERE lower(email) = lower(%s)",
-                    (top_from_email,)
-                )
-                user = cur.fetchone()
-
-                if not user:
-                    return JSONResponse(content={"status": "skipped", "reason": f"User {top_from_email} not found", "report": report})
-
-                user_id = user["id"]
-                message_id = report.get("message_id")
-                if not message_id:
-                    message_id = str(uuid.uuid4())
 
                 # Parse date
                 received_at = None
