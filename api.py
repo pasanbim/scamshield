@@ -1,10 +1,19 @@
 import os
 import logging
+import json
+import uuid
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 
+import psycopg
+from psycopg.rows import dict_row
+from email.utils import parsedate_to_datetime
+
 from main import load_model, analyze_email_raw
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.lbounrtpongoaizuzktw:28gI51Im4cwKP7Jw@aws-0-eu-west-1.pooler.supabase.com:5432/postgres")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,7 +64,99 @@ async def analyze(request: Request, x_api_key: str = Header(default=None)):
         logger.exception("Analysis failed")
         raise HTTPException(status_code=500, detail=str(exc))
 
-    return JSONResponse(content=report)
+    top_from_email = report.get("top_from_email")
+    if not top_from_email:
+        return JSONResponse(content={"status": "skipped", "reason": "No top_from_email extracted", "report": report})
+
+    # Query Database
+    try:
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                # Check user exists (the user forwarding the email is top_from_email)
+                cur.execute(
+                    "SELECT id FROM users WHERE lower(email) = lower(%s)",
+                    (top_from_email,)
+                )
+                user = cur.fetchone()
+
+                if not user:
+                    return JSONResponse(content={"status": "skipped", "reason": f"User {top_from_email} not found", "report": report})
+
+                user_id = user["id"]
+                message_id = report.get("message_id")
+                if not message_id:
+                    message_id = str(uuid.uuid4())
+
+                # Parse date
+                received_at = None
+                date_str = report.get("date")
+                if date_str:
+                    try:
+                        received_at = parsedate_to_datetime(date_str)
+                    except Exception:
+                        pass
+                
+                now = datetime.now(timezone.utc)
+
+                insert_query = """
+                    INSERT INTO email_submissions (
+                        user_id, message_id, subject, top_from, top_from_email,
+                        effective_from, effective_from_email, effective_from_domain,
+                        sender_source, received_at, overall_verdict, risk_label,
+                        scam_probability, scam_category, ml_score, heuristic_score,
+                        infrastructure_score, gemini_score, gemini_scam_type,
+                        brand_name, brand_legitimate, flags, reasons, urls_found,
+                        url_reports, analysis_json, raw_email, created_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    ) ON CONFLICT (user_id, message_id) DO NOTHING
+                """
+                
+                analysis_json = json.dumps(report)
+                flags_json = json.dumps(report.get("flags", []))
+                reasons_json = json.dumps(report.get("reasons", []))
+                urls_found_json = json.dumps(report.get("urls_found", []))
+                url_reports_json = json.dumps(report.get("url_reports", []))
+
+                cur.execute(insert_query, (
+                    user_id,
+                    message_id,
+                    report.get("subject"),
+                    report.get("top_from"),
+                    report.get("top_from_email"),
+                    report.get("effective_from"),
+                    report.get("effective_from_email"),
+                    report.get("effective_from_domain"),
+                    report.get("sender_source"),
+                    received_at,
+                    report.get("overall_verdict"),
+                    report.get("risk_label"),
+                    report.get("scam_probability"),
+                    report.get("scam_category"),
+                    report.get("ml_score"),
+                    report.get("heuristic_score"),
+                    report.get("infrastructure_score"),
+                    report.get("gemini_score"),
+                    report.get("gemini_scam_type"),
+                    report.get("brand_name"),
+                    report.get("brand_legitimate"),
+                    flags_json,
+                    reasons_json,
+                    urls_found_json,
+                    url_reports_json,
+                    analysis_json,
+                    raw_email,
+                    now,
+                    now
+                ))
+            conn.commit()
+            
+        return JSONResponse(content={"status": "success", "user_id": user_id, "message_id": message_id, "report": report})
+    except Exception as e:
+        logger.exception("Database insert failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
