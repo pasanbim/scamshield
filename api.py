@@ -62,8 +62,19 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
 
     text = f"ScamShield Analysis Report\n\nWe have analyzed the email you forwarded.\n\nOriginal Subject: {clean_subject}\nOverall Verdict: {verdict}\nRisk Label: {risk}\nScam Probability: {probability}%\n\nReasons identifying this verdict:\n"
     
-    # Filter out internal verbose Gemini classification logs from the user's email
-    display_reasons = [r for r in report.get("reasons", []) if not r.startswith("Gemini classified email as")]
+    # Format reasons for user display
+    display_reasons = []
+    for r in report.get("reasons", []):
+        if r.startswith("Gemini classified email as"):
+            continue
+            
+        # Strip internal AI phrasing
+        cleaned_r = r.replace("Gemini red flag: ", "").replace("Gemini red flag:", "").strip()
+        
+        if cleaned_r:
+            # Capitalize first letter neatly
+            cleaned_r = cleaned_r[0].upper() + cleaned_r[1:]
+            display_reasons.append(cleaned_r)
     
     for r in display_reasons:
         text += f"- {r}\n"
