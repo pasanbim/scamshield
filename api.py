@@ -57,6 +57,9 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
         color_theme = "#16a34a" # Green
         bg_theme = "#f0fdf4"
 
+    gemini_data = report.get("gemini", {})
+    explanation = gemini_data.get("explanation", None) if isinstance(gemini_data, dict) else None
+
     text = f"ScamShield Analysis Report\n\nWe have analyzed the email you forwarded.\n\nOriginal Subject: {clean_subject}\nOverall Verdict: {verdict}\nRisk Label: {risk}\nScam Probability: {probability}%\n\nReasons identifying this verdict:\n"
     
     # Filter out internal verbose Gemini classification logs from the user's email
@@ -64,6 +67,9 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     
     for r in display_reasons:
         text += f"- {r}\n"
+        
+    if explanation:
+        text += f"\nExplanation:\n{explanation}\n"
 
     html = f"""
     <!DOCTYPE html>
@@ -86,6 +92,7 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
       .reasons-title {{ font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }}
       .reasons-list {{ margin: 0; padding-left: 20px; color: #4b5563; }}
       .reasons-list li {{ margin-bottom: 8px; line-height: 1.5; }}
+      .explanation-text {{ color: #4b5563; line-height: 1.6; margin-top: 0; font-size: 15px; }}
       .footer {{ background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; }}
     </style>
     </head>
@@ -125,6 +132,15 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
         html += f"<li>{r}</li>"
     html += """
           </ul>
+    """
+    
+    if explanation:
+        html += f"""
+          <h3 class="reasons-title" style="margin-top: 32px;">Explanation</h3>
+          <p class="explanation-text">{explanation}</p>
+        """
+
+    html += """
         </div>
         <div class="footer">
           &copy; ScamShield Automated Scanner
