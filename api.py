@@ -4,6 +4,10 @@ import json
 import uuid
 from datetime import datetime, timezone
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 
@@ -15,8 +19,49 @@ from main import load_model, analyze_email_raw
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.lbounrtpongoaizuzktw:28gI51Im4cwKP7Jw@aws-0-eu-west-1.pooler.supabase.com:5432/postgres")
 
+MAIL_HOST = os.getenv("MAIL_HOST", "mail.scam-shield.uk")
+MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+MAIL_USERNAME = os.getenv("MAIL_USERNAME", "noreply@scam-shield.uk")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "LKA,4-gdN2w^zPJn")
+MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "noreply@scam-shield.uk")
+MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "ScamShield")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def send_report_email(to_email: str, subject_of_original: str, report: dict):
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"ScamShield Analysis Report: {subject_of_original}"
+    msg["From"] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
+    msg["To"] = to_email
+
+    verdict = report.get('overall_verdict', 'UNKNOWN')
+    risk = report.get('risk_label', 'UNKNOWN')
+    probability = report.get('scam_probability', 0)
+    
+    text = f"ScamShield Analysis Report\n\nWe have analyzed the email you forwarded.\n\nOriginal Subject: {subject_of_original}\nOverall Verdict: {verdict}\nRisk Label: {risk}\nScam Probability: {probability}%\n\nReasons identifying this verdict:\n"
+    for r in report.get("reasons", []):
+        text += f"- {r}\n"
+
+    html = f"<html><body><h2>ScamShield Analysis Report</h2><p>We have analyzed the email you forwarded.</p><ul><li><strong>Original Subject:</strong> {subject_of_original}</li><li><strong>Overall Verdict:</strong> {verdict}</li><li><strong>Risk Label:</strong> {risk}</li><li><strong>Scam Probability:</strong> {probability}%</li></ul><h3>Reasons:</h3><ul>"
+    for r in report.get("reasons", []):
+        html += f"<li>{r}</li>"
+    html += "</ul></body></html>"
+
+    part1 = MIMEText(text, "plain")
+    part2 = MIMEText(html, "html")
+    msg.attach(part1)
+    msg.attach(part2)
+
+    try:
+        server = smtplib.SMTP(MAIL_HOST, MAIL_PORT)
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
+        server.quit()
+        logger.info(f"Report emailed to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {e}")
 
 app = FastAPI(title="ScamShield API", version="1.0.0")
 
@@ -152,6 +197,8 @@ async def analyze(request: Request, x_api_key: str = Header(default=None)):
                     now
                 ))
             conn.commit()
+            
+        send_report_email(top_from_email, report.get("subject", "Unknown"), report)
             
         return JSONResponse(content={"status": "success", "user_id": user_id, "message_id": message_id, "report": report})
     except Exception as e:
