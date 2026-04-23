@@ -5,3 +5,4 @@ requests
 pandas
 google-genai
 scikit-learn
+psycopg[binary]
