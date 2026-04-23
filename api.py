@@ -188,31 +188,109 @@ def send_quota_exceeded_email(to_email: str, daily_limit: int):
     <!DOCTYPE html>
     <html>
     <head>
-    <style>
-      body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 20px; color: #1f2937; margin: 0; }}
-      .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
-      .header {{ background-color: #ffffff;padding: 32px 24px 0 24px; text-align: center; }}
-      .header img {{ max-width: 220px; height: auto; margin-bottom: 16px; }}
-      .content {{ padding: 32px 24px; text-align: center; }}
-      .greeting {{ font-size: 16px; margin-bottom: 24px; color: #4b5563; }}
-      .footer {{ background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; }}
-    </style>
+    <meta charset="UTF-8">
+    <title>ScamShield Notification</title>
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <img src="https://res.cloudinary.com/dcwxpqtd1/image/upload/v1776936877/scamshield_n9uvma.png" alt="ScamShield Logo">
-        </div>
-        <div class="content">
-          <h2 style="color: #dc2626; margin-top: 0;">Scan Limit Reached</h2>
-          <p class="greeting">Hello,</p>
-          <p class="greeting">You have reached your daily limit of <strong>{daily_limit} scans</strong>.</p>
-          <p class="greeting" style="margin-bottom: 8px;">Please wait until tomorrow to scan more emails, or log in to your account and upgrade your subscription plan to lift the limits.</p>
-        </div>
-        <div class="footer">
-          &copy; ScamShield Automated Scanner
-        </div>
-      </div>
+
+    <body style="margin:0; padding:0; background-color:#edf2f7; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+    <!-- Logo -->
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+        <td style="padding:25px 0; text-align:center;">
+        <img src="https://res.cloudinary.com/dcwxpqtd1/image/upload/v1776936877/scamshield_n9uvma.png"
+            alt="ScamShield" width="230"
+            style="max-width:100%; height:auto; border:0;">
+        </td>
+    </tr>
+    </table>
+
+    <!-- Body -->
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+        style="background-color:#edf2f7; border-top:1px solid #edf2f7; border-bottom:1px solid #edf2f7;">
+    <tr>
+        <td align="center">
+
+        <table width="570" cellpadding="0" cellspacing="0" role="presentation"
+                style="background-color:#ffffff; border:1px solid #e8e5ef; border-radius:2px;">
+
+            <tr>
+            <td style="padding:32px;">
+
+                <h1 style="font-size:18px; color:#3d4852; margin-top:0;">Hello!</h1>
+
+                <p style="font-size:16px; line-height:1.5em;">
+                You have reached your daily scan limit.
+                </p>
+
+                <p style="font-size:16px; line-height:1.5em;">
+                Your current limit is <strong>{daily_limit} scans</strong> per day.
+                </p>
+
+                <!-- Button -->
+                <table align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:30px auto; text-align:center;">
+                <tr>
+                    <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                        <tr>
+                        <td>
+                            <a href="#"
+                            style="display:inline-block; background-color:#2d3748; color:#ffffff;
+                                    text-decoration:none; border-radius:4px;
+                                    border-top:8px solid #2d3748;
+                                    border-bottom:8px solid #2d3748;
+                                    border-left:18px solid #2d3748;
+                                    border-right:18px solid #2d3748;">
+                            Upgrade Plan
+                            </a>
+                        </td>
+                        </tr>
+                    </table>
+                    </td>
+                </tr>
+                </table>
+
+                <p style="font-size:16px; line-height:1.5em;">
+                Please wait until tomorrow to continue scanning, or upgrade your plan to remove this limit.
+                </p>
+
+                <p style="font-size:16px; line-height:1.5em;">
+                Regards,<br>ScamShield
+                </p>
+
+                <!-- Subcopy -->
+                <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+                    style="border-top:1px solid #e8e5ef; margin-top:25px; padding-top:25px;">
+                <tr>
+                    <td>
+                    <p style="font-size:14px; line-height:1.5em;">
+                        If you're having trouble clicking the "Upgrade Plan" button, copy and paste the URL below into your web browser:
+                        <br><br>
+                        <span style="word-break:break-all;">https://your-app-link.com/upgrade</span>
+                    </p>
+                    </td>
+                </tr>
+                </table>
+
+            </td>
+            </tr>
+
+        </table>
+        </td>
+    </tr>
+    </table>
+
+    <!-- Footer -->
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+        <td align="center" style="padding:32px;">
+        <p style="font-size:12px; color:#b0adc5; text-align:center;">
+            © 2026 ScamShield. All rights reserved.
+        </p>
+        </td>
+    </tr>
+    </table>
+
     </body>
     </html>
     """
