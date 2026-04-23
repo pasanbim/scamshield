@@ -58,7 +58,11 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
         bg_theme = "#f0fdf4"
 
     text = f"ScamShield Analysis Report\n\nWe have analyzed the email you forwarded.\n\nOriginal Subject: {clean_subject}\nOverall Verdict: {verdict}\nRisk Label: {risk}\nScam Probability: {probability}%\n\nReasons identifying this verdict:\n"
-    for r in report.get("reasons", []):
+    
+    # Filter out internal verbose Gemini classification logs from the user's email
+    display_reasons = [r for r in report.get("reasons", []) if not r.startswith("Gemini classified email as")]
+    
+    for r in display_reasons:
         text += f"- {r}\n"
 
     html = f"""
@@ -117,7 +121,7 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
           <h3 class="reasons-title">Detailed Findings</h3>
           <ul class="reasons-list">
     """
-    for r in report.get("reasons", []):
+    for r in display_reasons:
         html += f"<li>{r}</li>"
     html += """
           </ul>
