@@ -266,7 +266,7 @@ def send_quota_exceeded_email(to_email: str, daily_limit: int):
                     <p style="font-size:14px; line-height:1.5em;">
                         If you're having trouble clicking the "Upgrade Plan" button, copy and paste the URL below into your web browser:
                         <br><br>
-                        <span style="word-break:break-all;">https://your-app-link.com/upgrade</span>
+                        <span style="word-break:break-all;">https://scam-shield.uk/upgrade</span>
                     </p>
                     </td>
                 </tr>
