@@ -22,7 +22,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.lbounrtpongoaizu
 MAIL_HOST = os.getenv("MAIL_HOST", "mail.scam-shield.uk")
 MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "noreply@scam-shield.uk")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "RA-xNxe;kI4U3,-$")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "4Bm-1V!-n?+=J%j#")
 MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "noreply@scam-shield.uk")
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "ScamShield")
 
