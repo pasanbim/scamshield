@@ -46,6 +46,7 @@ TEXT_COL = "text_combined"
 LABEL_COL = "label"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_SAFE_BROWSING_API_KEY")
+WHOISJSON_API_KEY = os.getenv("WHOISJSON_API_KEY", "c1f293201ca80aa6308a04d7b87a8249a683812866eb3d2eb55bf9cf89718a16")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.lbounrtpongoaizuzktw:28gI51Im4cwKP7Jw@aws-0-eu-west-1.pooler.supabase.com:5432/postgres")
 
 
@@ -486,6 +487,37 @@ def check_google_safe_browsing(url: str) -> dict[str, Any]:
 
 
 # ============================================================
+# WHOIS / SSL (WhoisJSON)
+# ============================================================
+
+def check_whois_ssl(domain: str) -> dict[str, Any]:
+    if not WHOISJSON_API_KEY:
+         return {"disabled": True, "reason": "No WHOISJSON_API_KEY set"}
+         
+    try:
+         headers = {"Authorization": f"TOKEN={WHOISJSON_API_KEY}"}
+         response = requests.get(f"https://whoisjson.com/api/v1/ssl-cert-check?domain={domain}", headers=headers, timeout=10)
+         if response.status_code == 200:
+             return response.json()
+         return {"error": f"API returned status {response.status_code}"}
+    except Exception as e:
+         return {"error": str(e)}
+
+def check_whois_domain(domain: str) -> dict[str, Any]:
+    if not WHOISJSON_API_KEY:
+         return {"disabled": True, "reason": "No WHOISJSON_API_KEY set"}
+         
+    try:
+         headers = {"Authorization": f"TOKEN={WHOISJSON_API_KEY}"}
+         response = requests.get(f"https://whoisjson.com/api/v1/whois?domain={domain}&_forceRefresh=1", headers=headers, timeout=15)
+         if response.status_code == 200:
+             return response.json()
+         return {"error": f"API returned status {response.status_code}"}
+    except Exception as e:
+         return {"error": str(e)}
+
+
+# ============================================================
 # URL ANALYSIS
 # ============================================================
 
@@ -505,6 +537,8 @@ def analyze_url(url: str) -> dict[str, Any]:
         "hostname": hostname,
         "typosquat": None,
         "google_safe_browsing": None,
+        "whois_domain": None,
+        "whois_ssl": None,
         "final_verdict": "UNKNOWN",
         "reasons": [],
     }
@@ -528,6 +562,20 @@ def analyze_url(url: str) -> dict[str, Any]:
     except requests.RequestException as e:
         result["google_safe_browsing"] = {"error": str(e)}
         result["reasons"].append(f"Google Safe Browsing error: {e}")
+
+    # Whois Domain / Registration check
+    whois_dom_res = check_whois_domain(hostname)
+    result["whois_domain"] = whois_dom_res
+    if whois_dom_res:
+        age_days = whois_dom_res.get("age", {}).get("days")
+        if age_days is not None and age_days < 30:
+            result["reasons"].append(f"Domain is very new ({age_days} days old)")
+
+    # SSL check
+    ssl_res = check_whois_ssl(hostname)
+    result["whois_ssl"] = ssl_res
+    if ssl_res and not ssl_res.get("valid", True) and "disabled" not in ssl_res:
+         result["reasons"].append("Domain has invalid or missing SSL certificate")
 
     gsb_matches = (result["google_safe_browsing"] or {}).get("matches", [])
     typo_flag = result["typosquat"]["is_typosquat_suspected"] if result["typosquat"] else False
@@ -701,6 +749,14 @@ def calculate_infrastructure_score(flags: list[str], url_reports: list[dict[str,
         if url_report.get("hops", 0) > 4:
             score += 10
 
+        if url_report.get("whois_ssl", {}).get("valid") is False:
+             score += 15
+             
+        whois_data = url_report.get("whois_domain", {})
+        age_days = whois_data.get("age", {}).get("days")
+        if age_days is not None and age_days < 30:
+            score += 25
+
     return min(100, int(score))
 
 
@@ -757,6 +813,8 @@ def build_gemini_email_payload(report: dict[str, Any]) -> str:
             "hostname": u.get("hostname"),
             "final_verdict": u.get("final_verdict"),
             "typosquat": u.get("typosquat"),
+            "whois_domain": u.get("whois_domain", {}),
+            "whois_ssl": u.get("whois_ssl", {}),
             "reasons": u.get("reasons", []),
         })
 
