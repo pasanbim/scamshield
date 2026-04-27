@@ -567,6 +567,8 @@ def analyze_url(url: str) -> dict[str, Any]:
     whois_dom_res = check_whois_domain(hostname)
     result["whois_domain"] = whois_dom_res
     if whois_dom_res:
+        if whois_dom_res.get("registered") is False:
+            result["reasons"].append("Domain is completely unregistered or dead")
         age_days = whois_dom_res.get("age", {}).get("days")
         if age_days is not None and age_days < 30:
             result["reasons"].append(f"Domain is very new ({age_days} days old)")
@@ -749,10 +751,15 @@ def calculate_infrastructure_score(flags: list[str], url_reports: list[dict[str,
         if url_report.get("hops", 0) > 4:
             score += 10
 
+        if url_report.get("resolution_error"):
+            score += 20
+
         if url_report.get("whois_ssl", {}).get("valid") is False:
              score += 15
              
         whois_data = url_report.get("whois_domain", {})
+        if whois_data.get("registered") is False:
+             score += 30
         age_days = whois_data.get("age", {}).get("days")
         if age_days is not None and age_days < 30:
             score += 25
