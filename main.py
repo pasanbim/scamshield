@@ -305,7 +305,7 @@ def extract_embedded_url(url: str) -> Optional[str]:
     return None
 
 
-def resolve_via_http(url: str, timeout: int = 15) -> dict[str, Any]:
+def resolve_via_http(url: str, timeout: int = 5) -> dict[str, Any]:
     def _follow(method: str):
         return requests.request(
             method,
@@ -319,6 +319,9 @@ def resolve_via_http(url: str, timeout: int = 15) -> dict[str, Any]:
         resp = _follow("HEAD")
         if resp.status_code in (405, 501) or resp.url == url:
             resp = _follow("GET")
+    except requests.exceptions.Timeout:
+        # If HEAD timed out, GET will also time out. Give up early.
+        raise
     except requests.RequestException:
         resp = _follow("GET")
 
@@ -496,7 +499,7 @@ def check_whois_ssl(domain: str) -> dict[str, Any]:
          
     try:
          headers = {"Authorization": f"TOKEN={WHOISJSON_API_KEY}"}
-         response = requests.get(f"https://whoisjson.com/api/v1/ssl-cert-check?domain={domain}", headers=headers, timeout=10)
+         response = requests.get(f"https://whoisjson.com/api/v1/ssl-cert-check?domain={domain}", headers=headers, timeout=5)
          if response.status_code == 200:
              return response.json()
          return {"error": f"API returned status {response.status_code}"}
@@ -509,7 +512,7 @@ def check_whois_domain(domain: str) -> dict[str, Any]:
          
     try:
          headers = {"Authorization": f"TOKEN={WHOISJSON_API_KEY}"}
-         response = requests.get(f"https://whoisjson.com/api/v1/whois?domain={domain}&_forceRefresh=1", headers=headers, timeout=15)
+         response = requests.get(f"https://whoisjson.com/api/v1/whois?domain={domain}&_forceRefresh=1", headers=headers, timeout=5)
          if response.status_code == 200:
              return response.json()
          return {"error": f"API returned status {response.status_code}"}
