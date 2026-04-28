@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def send_report_email(to_email: str, subject_of_original: str, report: dict):
     import re
     # Safely strip "Fwd: " from decoded subject using regex
-    clean_subject = re.sub(r"^(?i)\s*(fwd?|fw|forward)\s*:\s*", "", subject_of_original).strip()
+    clean_subject = re.sub(r"^\s*(fwd?|fw|forward)\s*:\s*", "", subject_of_original, flags=re.IGNORECASE).strip()
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"ScamShield Analysis Report: {clean_subject}"
