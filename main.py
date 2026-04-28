@@ -1025,18 +1025,23 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
             seen.add(u)
             unique_urls.append(u)
 
+    import concurrent.futures
     url_reports = []
-    for url in unique_urls:
-        if not is_analysable_url(url):
-            continue
-        try:
-            url_reports.append(analyze_url(url))
-        except Exception as exc:
-            url_reports.append({
-                "input_url": url,
-                "error": str(exc),
-                "final_verdict": "ERROR"
-            })
+    analyzable_urls = [u for u in unique_urls if is_analysable_url(u)]
+    
+    # Cap parallel processing to 15 unique URLs to avoid overloading workers
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_url = {executor.submit(analyze_url, url): url for url in analyzable_urls[:15]}
+        for future in concurrent.futures.as_completed(future_to_url):
+            url = future_to_url[future]
+            try:
+                url_reports.append(future.result())
+            except Exception as exc:
+                url_reports.append({
+                    "input_url": url,
+                    "error": str(exc),
+                    "final_verdict": "ERROR"
+                })
 
     cleaned_body = clean_text(subject + " " + plain_body)
     ml_probability = float(model.predict_proba([cleaned_body])[0][1])
