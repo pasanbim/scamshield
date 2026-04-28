@@ -942,7 +942,17 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
     """Core analysis logic shared by analyze_email and analyze_email_raw."""
     top_from_header = msg.get("From", "")
     to_header = msg.get("To", "")
-    subject = msg.get("Subject", "")
+    
+    from email.header import decode_header
+    raw_sub = msg.get("Subject", "")
+    subject = ""
+    if raw_sub:
+        for decoded_byte, charset in decode_header(raw_sub):
+            if isinstance(decoded_byte, bytes):
+                subject += decoded_byte.decode(charset or 'utf-8', errors='replace')
+            else:
+                subject += str(decoded_byte)
+                
     date = msg.get("Date", "")
     reply_to = msg.get("Reply-To", "") or ""
     return_path = msg.get("Return-Path", "") or ""
