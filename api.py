@@ -19,10 +19,10 @@ from main import load_model, analyze_email_raw
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.lbounrtpongoaizuzktw:28gI51Im4cwKP7Jw@aws-0-eu-west-1.pooler.supabase.com:5432/postgres")
 
-MAIL_HOST = os.getenv("MAIL_HOST", "mail.scam-shield.uk")
+MAIL_HOST = os.getenv("MAIL_HOST", "smtp.resend.com")
 MAIL_PORT = int(os.getenv("MAIL_PORT", 465))
-MAIL_USERNAME = os.getenv("MAIL_USERNAME", "noreply@scam-shield.uk")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "4Bm-1V!-n?+=J%j#")
+MAIL_USERNAME = os.getenv("MAIL_USERNAME", "resend")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "re_LmNMUdkJ_QJCJFxHTjBhsqww5N1nBGPs2")
 MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "noreply@scam-shield.uk")
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "ScamShield")
 
