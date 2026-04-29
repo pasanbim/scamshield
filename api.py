@@ -336,6 +336,26 @@ def health():
     return {"status": "ok", "model_loaded": _model is not None}
 
 
+@app.get("/test-smtp")
+def test_smtp():
+    import smtplib
+    import socket
+    try:
+        if MAIL_PORT == 465:
+            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=10)
+        else:
+            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10)
+            server.starttls()
+            
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.quit()
+        return {"status": "success", "message": f"Render successfully connected and authenticated to {MAIL_HOST}:{MAIL_PORT}"}
+    except socket.timeout:
+        return {"status": "failed", "error": "Socket timeout: Render's IP was blocked or ignored by the mail server firewall."}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+
+
 from fastapi import BackgroundTasks
 
 @app.post("/analyze")
