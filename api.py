@@ -23,7 +23,7 @@ MAIL_HOST = os.getenv("MAIL_HOST", "smtp.resend.com")
 MAIL_PORT = int(os.getenv("MAIL_PORT", 465))
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "resend")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "re_LmNMUdkJ_QJCJFxHTjBhsqww5N1nBGPs2")
-MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "onboarding@resend.dev")
+MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "noreply@scam-shield.uk")
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "ScamShield")
 
 logging.basicConfig(level=logging.INFO)
