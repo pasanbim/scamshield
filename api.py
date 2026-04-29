@@ -361,7 +361,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
     top_from_email = top_from_email.lower().strip()
 
     if not top_from_email:
-        return JSONResponse(content={"status": "skipped", "reason": "No top_from_email extracted from headers"})
+        return {"status": "skipped", "reason": "No top_from_email extracted from headers"}
 
     # 2. Verify user and enforce daily limits BEFORE heavy ML processing
     user_id = None
@@ -375,7 +375,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
                 user = cur.fetchone()
 
                 if not user:
-                    return JSONResponse(content={"status": "skipped", "reason": f"User {top_from_email} not found"})
+                    return {"status": "skipped", "reason": f"User {top_from_email} not found"}
 
                 user_id = user["id"]
                 daily_limit = user["daily_scan_limit"] if user["daily_scan_limit"] is not None else 10
@@ -389,7 +389,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
                 if submission_count >= daily_limit:
                     logger.info(f"Rate limit HIT. User {top_from_email} has {submission_count}/{daily_limit} submissions today.")
                     background_tasks.add_task(send_quota_exceeded_email, top_from_email, daily_limit)
-                    return JSONResponse(content={"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"})
+                    return {"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"}
     except Exception as e:
         logger.exception("Database configuration or limits query failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -479,7 +479,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
             
         background_tasks.add_task(send_report_email, top_from_email, report.get("subject", "Unknown"), report)
             
-        return JSONResponse(content={"status": "success", "user_id": user_id, "message_id": message_id, "report": report})
+        return {"status": "success", "user_id": user_id, "message_id": message_id, "report": report}
     except Exception as e:
         logger.exception("Database insert failed")
         raise HTTPException(status_code=500, detail=str(e))
