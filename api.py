@@ -328,8 +328,10 @@ def health():
     return {"status": "ok", "model_loaded": _model is not None}
 
 
+from fastapi import BackgroundTasks
+
 @app.post("/analyze")
-async def analyze(request: Request, x_api_key: str = Header(default=None)):
+async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key: str = Header(default=None)):
     """
     Accepts a raw RFC 2822 email as the request body (Content-Type: text/plain
     or message/rfc822) and returns a JSON analysis report.
@@ -386,7 +388,7 @@ async def analyze(request: Request, x_api_key: str = Header(default=None)):
 
                 if submission_count >= daily_limit:
                     logger.info(f"Rate limit HIT. User {top_from_email} has {submission_count}/{daily_limit} submissions today.")
-                    send_quota_exceeded_email(top_from_email, daily_limit)
+                    background_tasks.add_task(send_quota_exceeded_email, top_from_email, daily_limit)
                     return JSONResponse(content={"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"})
     except Exception as e:
         logger.exception("Database configuration or limits query failed")
@@ -475,7 +477,7 @@ async def analyze(request: Request, x_api_key: str = Header(default=None)):
                 ))
             conn.commit()
             
-        send_report_email(top_from_email, report.get("subject", "Unknown"), report)
+        background_tasks.add_task(send_report_email, top_from_email, report.get("subject", "Unknown"), report)
             
         return JSONResponse(content={"status": "success", "user_id": user_id, "message_id": message_id, "report": report})
     except Exception as e:
