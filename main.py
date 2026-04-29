@@ -305,7 +305,7 @@ def extract_embedded_url(url: str) -> Optional[str]:
     return None
 
 
-def resolve_via_http(url: str, timeout: int = 5) -> dict[str, Any]:
+def resolve_via_http(url: str, timeout: int = 15) -> dict[str, Any]:
     def _follow(method: str):
         return requests.request(
             method,
@@ -319,9 +319,6 @@ def resolve_via_http(url: str, timeout: int = 5) -> dict[str, Any]:
         resp = _follow("HEAD")
         if resp.status_code in (405, 501) or resp.url == url:
             resp = _follow("GET")
-    except requests.exceptions.Timeout:
-        # If HEAD timed out, GET will also time out. Give up early.
-        raise
     except requests.RequestException:
         resp = _follow("GET")
 
@@ -499,7 +496,7 @@ def check_whois_ssl(domain: str) -> dict[str, Any]:
          
     try:
          headers = {"Authorization": f"TOKEN={WHOISJSON_API_KEY}"}
-         response = requests.get(f"https://whoisjson.com/api/v1/ssl-cert-check?domain={domain}", headers=headers, timeout=5)
+         response = requests.get(f"https://whoisjson.com/api/v1/ssl-cert-check?domain={domain}", headers=headers, timeout=10)
          if response.status_code == 200:
              return response.json()
          return {"error": f"API returned status {response.status_code}"}
@@ -512,7 +509,7 @@ def check_whois_domain(domain: str) -> dict[str, Any]:
          
     try:
          headers = {"Authorization": f"TOKEN={WHOISJSON_API_KEY}"}
-         response = requests.get(f"https://whoisjson.com/api/v1/whois?domain={domain}&_forceRefresh=1", headers=headers, timeout=5)
+         response = requests.get(f"https://whoisjson.com/api/v1/whois?domain={domain}&_forceRefresh=1", headers=headers, timeout=15)
          if response.status_code == 200:
              return response.json()
          return {"error": f"API returned status {response.status_code}"}
@@ -1028,23 +1025,18 @@ def _analyze_email_msg(msg, model) -> dict[str, Any]:
             seen.add(u)
             unique_urls.append(u)
 
-    import concurrent.futures
     url_reports = []
-    analyzable_urls = [u for u in unique_urls if is_analysable_url(u)]
-    
-    # Cap parallel processing to 15 unique URLs to avoid overloading workers
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_url = {executor.submit(analyze_url, url): url for url in analyzable_urls[:15]}
-        for future in concurrent.futures.as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                url_reports.append(future.result())
-            except Exception as exc:
-                url_reports.append({
-                    "input_url": url,
-                    "error": str(exc),
-                    "final_verdict": "ERROR"
-                })
+    for url in unique_urls:
+        if not is_analysable_url(url):
+            continue
+        try:
+            url_reports.append(analyze_url(url))
+        except Exception as exc:
+            url_reports.append({
+                "input_url": url,
+                "error": str(exc),
+                "final_verdict": "ERROR"
+            })
 
     cleaned_body = clean_text(subject + " " + plain_body)
     ml_probability = float(model.predict_proba([cleaned_body])[0][1])
