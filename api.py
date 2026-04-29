@@ -163,17 +163,28 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     msg.attach(part1)
     msg.attach(part2)
 
+    import requests
+    
+    payload = {
+        "from": f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>",
+        "to": [to_email],
+        "subject": msg["Subject"],
+        "text": text,
+        "html": html
+    }
+    
     try:
-        if MAIL_PORT == 465:
-            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=15)
-        else:
-            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
-            server.starttls()
-            
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
-        server.quit()
-        logger.info(f"Report emailed to {to_email}")
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {MAIL_PASSWORD}",
+                "Content-Type": "application/json"
+            },
+            json=payload,
+            timeout=15
+        )
+        response.raise_for_status()
+        logger.info(f"Report emailed to {to_email} via Resend HTTP API")
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {e}")
 
@@ -301,17 +312,28 @@ def send_quota_exceeded_email(to_email: str, daily_limit: int):
     msg.attach(part1)
     msg.attach(part2)
 
+    import requests
+    
+    payload = {
+        "from": f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>",
+        "to": [to_email],
+        "subject": msg["Subject"],
+        "text": text,
+        "html": html
+    }
+
     try:
-        if MAIL_PORT == 465:
-            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=15)
-        else:
-            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
-            server.starttls()
-            
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
-        server.quit()
-        logger.info(f"Quota exceeded email sent to {to_email}")
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {MAIL_PASSWORD}",
+                "Content-Type": "application/json"
+            },
+            json=payload,
+            timeout=15
+        )
+        response.raise_for_status()
+        logger.info(f"Quota exceeded email sent to {to_email} via Resend HTTP API")
     except Exception as e:
         logger.error(f"Failed to send quota email to {to_email}: {e}")
 
@@ -338,22 +360,18 @@ def health():
 
 @app.get("/test-smtp")
 def test_smtp():
-    import smtplib
-    import socket
+    import requests
     try:
-        if MAIL_PORT == 465:
-            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=10)
-        else:
-            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10)
-            server.starttls()
-            
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.quit()
-        return {"status": "success", "message": f"Render successfully connected and authenticated to {MAIL_HOST}:{MAIL_PORT}"}
-    except socket.timeout:
-        return {"status": "failed", "error": "Socket timeout: Render's IP was blocked or ignored by the mail server firewall."}
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {MAIL_PASSWORD}", "Content-Type": "application/json"},
+            json={"from": f"ScamShield <{MAIL_FROM_ADDRESS}>", "to": ["test@example.com"], "subject": "Test", "text": "Test"},
+            timeout=10
+        )
+        response.raise_for_status()
+        return {"status": "success", "message": "Render successfully connected to Resend's REST API!"}
     except Exception as e:
-        return {"status": "failed", "error": str(e)}
+        return {"status": "failed", "error": str(e), "content": response.text if 'response' in locals() else ""}
 
 
 from fastapi import BackgroundTasks
