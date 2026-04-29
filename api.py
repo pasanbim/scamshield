@@ -164,8 +164,12 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     msg.attach(part2)
 
     try:
-        server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
-        server.starttls()
+        if MAIL_PORT == 465:
+            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=15)
+        else:
+            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
+            server.starttls()
+            
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
         server.quit()
@@ -298,8 +302,12 @@ def send_quota_exceeded_email(to_email: str, daily_limit: int):
     msg.attach(part2)
 
     try:
-        server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
-        server.starttls()
+        if MAIL_PORT == 465:
+            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=15)
+        else:
+            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
+            server.starttls()
+            
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
         server.quit()
