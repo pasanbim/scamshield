@@ -359,13 +359,13 @@ def health():
 
 
 @app.get("/test-smtp")
-def test_smtp():
+def test_smtp(email: str = "pppppasan@gmail.com"):
     import requests
     try:
         response = requests.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {MAIL_PASSWORD}", "Content-Type": "application/json"},
-            json={"from": f"ScamShield <{MAIL_FROM_ADDRESS}>", "to": ["test@example.com"], "subject": "Test", "text": "Test"},
+            json={"from": f"ScamShield <{MAIL_FROM_ADDRESS}>", "to": [email], "subject": "ScamShield Render HTTP API Test", "text": "This is a test from the Render Server using Resend's REST API!"},
             timeout=10
         )
         response.raise_for_status()
