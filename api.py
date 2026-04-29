@@ -20,7 +20,7 @@ from main import load_model, analyze_email_raw
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.lbounrtpongoaizuzktw:28gI51Im4cwKP7Jw@aws-0-eu-west-1.pooler.supabase.com:5432/postgres")
 
 MAIL_HOST = os.getenv("MAIL_HOST", "mail.scam-shield.uk")
-MAIL_PORT = int(os.getenv("MAIL_PORT", 465))
+MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "noreply@scam-shield.uk")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "4Bm-1V!-n?+=J%j#")
 MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "noreply@scam-shield.uk")
@@ -30,9 +30,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def send_report_email(to_email: str, subject_of_original: str, report: dict):
-    import re
-    # Safely strip "Fwd: " from decoded subject using regex
-    clean_subject = re.sub(r"^\s*(fwd?|fw|forward)\s*:\s*", "", subject_of_original, flags=re.IGNORECASE).strip()
+    # Safely strip "Fwd: " from subject without regex
+    clean_subject = subject_of_original.strip()
+    if clean_subject.lower().startswith("fwd: "):
+        clean_subject = clean_subject[5:].strip()
+    elif clean_subject.lower().startswith("fwd:"):
+        clean_subject = clean_subject[4:].strip()
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"ScamShield Analysis Report: {clean_subject}"
@@ -164,12 +167,8 @@ def send_report_email(to_email: str, subject_of_original: str, report: dict):
     msg.attach(part2)
 
     try:
-        if MAIL_PORT == 465:
-            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=15)
-        else:
-            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
-            server.starttls()
-            
+        server = smtplib.SMTP(MAIL_HOST, MAIL_PORT)
+        server.starttls()
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
         server.quit()
@@ -302,12 +301,8 @@ def send_quota_exceeded_email(to_email: str, daily_limit: int):
     msg.attach(part2)
 
     try:
-        if MAIL_PORT == 465:
-            server = smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=15)
-        else:
-            server = smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15)
-            server.starttls()
-            
+        server = smtplib.SMTP(MAIL_HOST, MAIL_PORT)
+        server.starttls()
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.sendmail(MAIL_FROM_ADDRESS, to_email, msg.as_string())
         server.quit()
@@ -336,10 +331,8 @@ def health():
     return {"status": "ok", "model_loaded": _model is not None}
 
 
-from fastapi import BackgroundTasks
-
 @app.post("/analyze")
-async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key: str = Header(default=None)):
+async def analyze(request: Request, x_api_key: str = Header(default=None)):
     """
     Accepts a raw RFC 2822 email as the request body (Content-Type: text/plain
     or message/rfc822) and returns a JSON analysis report.
@@ -369,7 +362,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
     top_from_email = top_from_email.lower().strip()
 
     if not top_from_email:
-        return {"status": "skipped", "reason": "No top_from_email extracted from headers"}
+        return JSONResponse(content={"status": "skipped", "reason": "No top_from_email extracted from headers"})
 
     # 2. Verify user and enforce daily limits BEFORE heavy ML processing
     user_id = None
@@ -383,7 +376,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
                 user = cur.fetchone()
 
                 if not user:
-                    return {"status": "skipped", "reason": f"User {top_from_email} not found"}
+                    return JSONResponse(content={"status": "skipped", "reason": f"User {top_from_email} not found"})
 
                 user_id = user["id"]
                 daily_limit = user["daily_scan_limit"] if user["daily_scan_limit"] is not None else 10
@@ -396,8 +389,8 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
 
                 if submission_count >= daily_limit:
                     logger.info(f"Rate limit HIT. User {top_from_email} has {submission_count}/{daily_limit} submissions today.")
-                    background_tasks.add_task(send_quota_exceeded_email, top_from_email, daily_limit)
-                    return {"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"}
+                    send_quota_exceeded_email(top_from_email, daily_limit)
+                    return JSONResponse(content={"status": "skipped", "reason": f"Daily limit of {daily_limit} scans reached"})
     except Exception as e:
         logger.exception("Database configuration or limits query failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -485,9 +478,9 @@ async def analyze(request: Request, background_tasks: BackgroundTasks, x_api_key
                 ))
             conn.commit()
             
-        background_tasks.add_task(send_report_email, top_from_email, report.get("subject", "Unknown"), report)
+        send_report_email(top_from_email, report.get("subject", "Unknown"), report)
             
-        return {"status": "success", "user_id": user_id, "message_id": message_id, "report": report}
+        return JSONResponse(content={"status": "success", "user_id": user_id, "message_id": message_id, "report": report})
     except Exception as e:
         logger.exception("Database insert failed")
         raise HTTPException(status_code=500, detail=str(e))
